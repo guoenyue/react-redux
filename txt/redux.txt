@@ -1,0 +1,248 @@
+redux 三大元素：action reducer state 
+其中action是代表了用户行为且将包含抽象行为，许许多多的action组成了actions;
+redux接受这些actions根据reducer中定义的处理方式来处理这些actions并返回对应的state.
+
+state是某个特定的action对应的特定结果，且唯一一一对应，rudux可独立于任何js框架使用，多用来使用在react的原因是
+react对state生成状态组件友好，即同一个数据状态生成同一个(相同)组件。所以如果配合使用了redux我们大部分情况只需要
+react提供木偶组件(无状态组件，显示内容只由props决定，而props的由来则由redux将state映射成木偶组件的props)即可。
+
+action有规定的写法，必须是一个包含type字段的对象，这个字段对应的值是一个固定值，且在reducer中将会有对应字段处理
+
+action的例子：
+{
+    type:"ADD_TODO",
+    //固定字段，提示reducer映射何种处理方式处理这个action
+    text,
+    //自定义携带信息，用于被reducer的处理函数使用
+}
+一个页面上不可能只有一个或几个action,甚至大型的网站成千上百个action，此时我们就不能手动去每次写特定的action，我们可以由action
+函数来生成action，一般情况下我们已经默认用action函数来替代了action对象，可是这是两个不同的东西，千万不能弄混，即使action生成函数的
+名字我们一般起成xxxAction
+action函数的例子：
+function addToDoAction(txt){
+    return {
+        type:"ADD_TODO",
+        text:txt
+    };
+}
+
+在redux中我们通过reducer处理传入的action，那么reducer中就会有对应的处理函数来处理返回state
+关于reducer，因为这个处理函数必须要返回一个state所以他接收一个旧的state作为第一个参数，以对旧的state进行操作并返回新的状态的state值
+因为state是上一次的state所以在首次执行这个reducer的时候我们要手动指定他的初值，在没有state的时候将其置成我们设定格式的默认state，否
+则第一次的state为null
+
+reducer的例子：
+
+function toggle(todo,action){
+    if(todo.id==action.id){
+        todo.completed=!todo.completed;
+    }
+    return todo;
+}
+function addtodo(action){
+    return {
+        id:action.id,
+        text:action.txt,
+        completed:false,
+    };
+}
+function reducer(state,action){
+    var type=action.type;
+    switch(type){
+        case "ADD_TODO":
+            //此处对应ADD_TODO类型的action的处理函数
+            //reducer必须返回一个state
+            return Object.assign({},state,{todos:[...state.todos,addtodo(action)]});
+        break;
+        case "TOGGLE_TODO":
+            return Object.assign({},state,{todos:state.todos.map(todo=>toggle(todo,action))});
+        break;
+        case "VISIBILITY_TODO":
+            return Object.assign({},state,{visibilityState:action.visibilityState});
+        break;
+        default:
+            return state;
+        break;
+    }
+}
+
+但是实际使用中，将会有很多reducer处理函数，如果全都写在一个reducer中通过switch去分别对待，那么这个reducer将会变得非常庞大，所以我们
+在实际应用中通常将reducer拆分成多个更小的reducer来处理针对同一类型的数据（这里统一类型，并不是js中的数据类型，而是业务类型）,比如我们
+在这个例子中会对todos列表数组进行操作，也会对显示项目类型进行操作，而这两个内容分别存在不同的字段，对应不同的处理逻辑。所以我们可以将
+他们抽离出来，用俩个小的reducer来组成这个大的reducer（此时这个已经不是reducer了，而是reducers）
+例子如下：
+
+function todosReducer(state,action){
+    var type=action.type;
+    switch(type){
+        case "ADD_TODO":
+            return [...state,addtodo(action)];
+        break;
+        case "TOGGLE_TODO":
+            return  state.map(todo=>toggle(todo,action));
+        break;
+        default:
+            return state;
+        break;
+    }
+}
+
+function visibilityReducer(state,action){
+    var type=action.type;
+    switch(type){
+        case "VISIBILITY_TODO":
+            return action.visibilityState;
+        break;
+        default:
+            return state;
+        break;
+    }
+}
+
+function reducers(state,action){
+    //这个函数的作用永远是返回一个state,这个是固定的
+    return {
+        todos:todosReducer(state.todos,action),
+        visibilityState:visibilityReducer(state.visibilityState,action)
+    };
+}
+
+关于state，这个state的格式将会由开发人员自己制定，而此处的state并不完全等同于react中的state。但是简单的可以理解成是state，可并不能
+直接将其看成是常规react中的state,因为我们后边将会在react组件中通过redux把这个值转换成react组件中的props，所以我们需要将这个格式定
+制的对props友好，所以也可以看成是props的映射，并且我们后边也将会使用mapStateToProps函数（有关这个函数，后边讲解connect的时候将会讲
+解）对这个state处理。
+
+这里todo对象:
+    {
+        id:'xxx-xxx-xxx',
+        text:"desc desc desc txt",
+        completed:false[true]
+    }
+state的例子：
+{
+    todos:[...todos],
+    visibilityState:"SHOW_ALL"
+}
+
+redux会把所有的state维护在一个全局统一的store中，所以所有的数据将会在store对象上挂载，而我们前边的这些action,reducer都是为了将数据挂载到store上，但是在
+实际的项目中我们要在合适的时机去取到这些store的某个状态节点(此处状态节点即为某个组件需要的值对应在state中的键。)。在原生的redux的使用中他有一个subscribe的
+接口，在每次dispatch的时候都会触发subscribe这个函数，可以在这个函数中去获取最新的store的state的状态，而全局获取state的状态的操作接口是getState这个方法。
+
+原生redux的getState的例子：
+(ps：crreateStore这个方法来自于redux这个库中提供，是一个全局方法,该方法返回store对象)
+let store=createStore(reducer);
+
+store.subscribe(()=>{
+    store.getState();
+    //将会得到最新的state
+});
+
+store.dispatch(action);
+//这个方法每执行一次就会触发store.subscribe及其回调函数执行一次。
+//所以如果我们直接使用原生redux，那么我们可以直接在subscribe中获取最新的state然后针对state返回值中最新的状态进行react组件的state或者props对象的更新，以更新
+//组件进而更新整个程序。
+
+每次都在不同的组件中进行subscribe的绑定并分析其实是很繁琐和麻烦的一件事情，所以react-redux的出现就是为了免去一些复制粘贴相同逻辑处理的代码，提供一个统一的接口
+来使前端更加专注于业务逻辑。而不用浪费时间在框架之间的数据传递上。但是react-redux的使用其实是有一个规范的用法，或者说约定好的用法，并不能特别随意的去书写，其实
+任何的框架的使用都是有约定的写法，并不是像原生那样随意去使用，这一点要注意。
+在react-redux中，将react组件简单区分出三个不同类型的组件：(ps：以下内容中"原生react"一词代表了纯react,即不使用redux或者react-redux的react)
+    1.展示组件，也叫木偶组件、无状态组件。其组件表现仅仅由props决定，是一个静态组件。
+    2.容器组件，该组件由react-redux生成，该组件承载所有的数据，即原生react中的state数据。此组件将会把其state绑定到展示组件的props上。来实现数据的绑定。
+    3.其他组件，也可以理解成混合组件，即由承载了展示，又承载了数据。多为表单元素。
+
+所以综合以上三点我们知道将redux的store中的state量拿到react中作为state使用的场景为容器组件中，而react-redux提供了一个对外的接口是connect 方法，这个方法来自react-redux
+是一个全局方法。其是一个高阶函数，可以接受某组件需要的state量和dispatch actions。然后将该容器组件与展示组件进行绑定，把所有的量通过props传递到展示组件上。
+简单来讲这个方法的作用有点类似于：
+let props=Object.assign({},arguments[0],arguments[1]);
+
+connect的例子用法：
+
+//getVisibilityStateTodos这个函数的作用是返回符合当前状态的todos项目列表
+function getVisibilityStateTodos(todos,filter){
+    //这里的todos对应着store上的todos
+    //filter对应着store上的visibilityState字段，即处理显示状态的逻辑在这个函数中
+    switch(filter){
+        case "SHOW_ALL":
+            return todos;
+        break;
+        case "SHOW_COMPLETED":
+            return todos.filter(todo=>todo.completed);
+        break;
+        case "SHOW_ACTIVE":
+            return todos.filter(todo=>!todo.completed);
+        break;
+        default:
+            reuturn todos;
+        break;
+    }
+}
+//mapStateToProps这个函数作为connect方法的第一个参数，connect将会把state作为参数传到这个方法里,这个方法的返回值作为展示对象的一部分(被merge到props上)
+function mapStateToProps(state){
+    return {
+        todos:getVisibilityStateTodos(state.todos,state.visibilityState)
+    };
+}
+//mapDispatchToProps这个函数的作用是将action映射到props上，多为绑定函数，该方法做为connect的第二个参数，connect将store的dispatch方法作为参数传到这个
+//方法上。所以可以在内部调用该dispatch触发action。这里也是返回一个对象，此对象中的键将会作为展示容器props中的键。
+function mapDispatchToProps(dispatch){
+    return {
+        onTodoClick:function(id){
+            dispatch(toggleTodo(id));
+            //这里的toggle是action！也即这个函数保证每次点击todo项目的时候将会触发一个action的dispatch
+        }
+    };
+}
+//通过connect方法将react-redux中的state与原生react的props绑定，以下即将store.getState().todos绑定到todos的props.todos中，同时点击props中还有一个名为
+//onTodoClick的函数，可以将其绑定到每个todo上，以触发点击toggleTodo的action以进行数据更新。
+let ToDoList=connect(mapStateToProps,mapDispatchToProps)(todos);
+
+以上介绍是针对容器组件和展示组件，那么有些组件是混合组件，我们如何在组件中使用connect呢，接下来我们继续写AddTodo这个组件
+AddTodo这个组件是一个前边介绍的混合组件，他既触发action改变数据，又起着展示的作用。
+
+这个组件的写法是：
+
+const AddTodo=({dispatch})=>{
+    let input;
+    return (
+        <form onSubmit={
+                e=>{
+                    e.preventDefault();
+                    let val=ref.value.trim();
+                    if(val){
+                        dispatch(addTodo(val));
+                    };
+                    ref.value='';
+                }
+        }>
+            <input ref={node=>input=node;}/>
+            <button type="submit">Add Todo</button>
+        </form>
+    );
+};
+AddTodo=connect()(AddTodo);
+
+从上可见，如果我们容器组件需要手动将展示组件包含在内部，然后手动去映射展示组件的props，如果项目比较大，我们这么做也是很麻烦
+而react-redux使用了context属性来提升全局变量，可以使我们免去这一步骤，只需要在顶层组件用react-redux提供的Provider组件包裹
+全项目即可
+
+index.js 的例子：
+
+import React from 'react'
+import { render } from 'react-dom'
+import { Provider } from 'react-redux'
+import { createStore } from 'redux'
+import todoApp from './reducers'
+import App from './components/App'
+
+    let store = createStore(todoApp)
+
+    render(
+        <Provider store={store}>
+            <App />
+        </Provider>,
+        document.getElementById('root')
+    )
+
+以上就是react-redux配合react使用的静态同步过程。后续将会学习异步触发使用方法。
+
+

@@ -1,0 +1,37 @@
+ul,
+li {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.todoitem {
+    padding: 10px 14px;
+    width: 600px;
+    border: 1px solid #006bff;
+    border-radius: 4px;
+}
+
+.todoitem~.todoitem {
+    margin-top: 4px;
+}
+
+.todoContent {
+    color: #333;
+}
+
+.completeBtn {
+    border: none;
+    background-color: #00b400;
+    text-align: center;
+    padding: 10px auto;
+    float: right;
+}
+
+.deleteBtn {
+    border: none;
+    background-color: #006bff;
+    text-align: center;
+    padding: 10px auto;
+    float: right;
+}

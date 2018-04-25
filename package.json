@@ -1,0 +1,33 @@
+{
+    "name": "redux-test",
+    "version": "1.0.0",
+    "description": "redux demo",
+    "main": "",
+    "scripts": {
+        "start": "http-server"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/guoenyue/react.git"
+    },
+    "keywords": [
+        "react"
+    ],
+    "author": "guo",
+    "license": "MIT",
+    "dependencies": {
+        "react": "^16.2.0",
+        "react-dom": "^16.2.0",
+        "react-redux": "^5.0.7",
+        "redux": "^3.7.2",
+        "webpack": "^4.1.1"
+    },
+    "devDependencies": {
+        "babel-loader": "^7.1.4",
+        "babel-preset-react": "^6.24.1",
+        "css-loader": "^0.28.11",
+        "http-server": "^0.11.1",
+        "style-loader": "^0.20.3",
+        "webpack-cli": "^2.0.12"
+    }
+}
