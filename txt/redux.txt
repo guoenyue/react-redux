@@ -245,4 +245,45 @@ import App from './components/App'
 
 以上就是react-redux配合react使用的静态同步过程。后续将会学习异步触发使用方法。
 
+redux异步的使用
+官方的教程讲解了一个发送ajax请求的例子来讲解异步的redux的使用，这里的异步个人认为同平时开发来讲的异步思路有点区别，并不是说单纯的函数
+异步而是说对store或者同一个state的异步操作，例子中将手动刷新事件和点选拉取api事件同拉取api操作两者分离，降低了事件依赖的耦合度，而且
+官方的例子并没有详细讲解这样做的好处，在用的时候还是顺序执行上下俩个函数绑定在同一个UI事件里，暂时没看出这样分离带来了什么，因为按之前
+的开发习惯都是在响应选择事件之后，1.获取改变值，2。将改变值作为参数去拉取api获得新的数据.至于获取新数据以及之后的操作我们都将会在ajax
+或者说异步请求回调或者promise的then函数中处理。其实本质上这个redux的思想也是这样，只不过我们平时的开发习惯都是将1，2绑定在一起，而redux
+在这里将1，2分开绑定了俩个action(其实这里会给人造成很大的误导，然后他又没有详细讲解这样做的好处，感觉就像是为了异步而异步)，但是调用的
+时候还是在js中上下顺序执行，这。。。。令人费解，所以1，2两个动作的关系还是同步的关系，这里要理解清楚。所以他既然将俩个action分开了，那
+么在UI事件里该如何响应，我们知道dispatch接收的action必须是一个带有type字段的对象，然后立即调用reducers在reducers中返回新的state,但
+是由于拉取api这个动作是一个异步动作，所以立即返回的state还是原来的state，并不能即时更新，所以我们肯定要在异步函数执行完之后再去dispatch
+一个action来更新state数据。然后为了告诉UI我们正在拉取api数据，我们在发送http请求之前要更新一个state来告诉UI我们正在请求数据。
+综上，我们可以看到这个异步(只有在网络请求和网络请求得到数据触发更新数据的dispatch这个过程才是异步，其他的action派发都是同步)。那么在
+这个请求的过程中如果刚好有其他的state更新，或者顺序不对，就会造成冲突或者数据更新异常。所以我们需要在dispatch这个异步的时候并不是dispatch
+一个action对象，而是一个thunk函数(有关thunk函数我们将会在后边讲解middleware的时候进行介绍),其实在这里dispatch一个函数的意义是因为我们
+要发出一个http请求的指令。而这里对获取改变值和将改变值分成两个action。但是后者将会触发一个带有http请求的事件，而不是立即输出一个纯正的
+action对象，所以为了"没有困难,制造困难"我们毅然决然的将后边这个action变成一个异步thunk函数，然后在通过中间件(middleware，来自redux)
+来给dispatch添加识别thunk函数的功能。读到这里已经蒙了，其实写到这里我也蒙了，还是来按照我自己的思路直接写一个1，2两步骤混在一起的写法
+来比较一下跟异步redux的官方教程写法的区别吧。
 
+首先我要定义一个action来获取选中的值，并在这个action里发送一个http请求。
+
+function selectChangeAction(selectItem){
+    fetch(selectItem).then(res=>res.json()).then(res=>dispatch(setData(res)));
+    return {
+        type:"CHANGE_SELECT",
+        selectitem:selectItem
+    };
+}
+
+function setData(items){
+    return {
+        type:"SET_DATA",
+        items:items
+    };
+}
+
+看到这里有个问题就是我们的selectChangeAction函数中带有http异步请求啊，想来也没跟官方的例子有区别啊。而且这里我们永远返回一个纯正的action
+也符合同步dispatch的写法，写个例子跑一下看看真正运行起来有没有什么问题
+
+所以在自己写的过程中，遇到一个问题就是在action中dispatch另一个action的时候，并不能取到一个dispatch函数，因为这个函数并不是全局方法
+所以我的解决办法是在dispatch那个action方法时，将外边的dispatch方法作为参数传到action方法中去，这样即可在action函数中disaptch另一个
+action.
