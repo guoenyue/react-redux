@@ -287,3 +287,51 @@ function setData(items){
 所以在自己写的过程中，遇到一个问题就是在action中dispatch另一个action的时候，并不能取到一个dispatch函数，因为这个函数并不是全局方法
 所以我的解决办法是在dispatch那个action方法时，将外边的dispatch方法作为参数传到action方法中去，这样即可在action函数中disaptch另一个
 action.
+
+最终经过验证，其实异步的redux就是通过thunk函数解决了上边的这个手动注入dispatch的问题，(ps:有关这个注入dispatch的方法，请自行查阅资料，地址
+为：http://www.redux.org.cn/docs/advanced/Middleware.html。)，那么这个thunk函数我们要想让dispatch识别，则必须安装一个新的redux-thunk模
+块，依赖这个模块提供的thunkMiddleware中间件来使srore的dispatch接收一个函数，但是这个中间件需要通过redux模块提供的applyMiddleware这个方法来
+注入到createStore中，这个applyMiddleware的作用就是使store的dispatch获得处理函数参数的能力，其实如果我们只使用thunkMiddleware的话只要知道
+这个东西需要放在applyMiddleware下即可，并不需要去深入了解middleware的内部实现（当然，如果你有需要自己去实现一个中间件，那么你必须要去了解这个）。
+
+写到这里，我们来梳理一下异步redux的流程，然后再总结一下异步redux和同步redux的区别。
+异步流程即是dispatch一个thunk函数来触发异步事件，在异步事件中触发同步的dispatch。
+异步action（这里异步action不再是对象）例子：
+
+//同步action
+function addMovies(movies){
+    return {
+        type:"ADD_MOVIES",
+        list:movies
+    };
+}
+
+function setMoviesStatus(status){
+    return {
+        type:"SET_MOVIES_STATUS",
+        status:status
+    };
+}
+
+//异步action
+function getMovies(postData){
+    return function(dispatch){
+        dispatch(setMoviesStatus("loading"));
+        return fetch("url",postData)
+               .then(res=>res.json())
+               .then(
+                   res=>dispatch(addMovies(res)),
+                   err=>dispatch(setMoviesStatus("err"))
+                );
+    }
+}
+
+所以同步redux和异步redux的区别就在这里，而且在异步action的函数中最终必须触发一个同步的action的dispatch来结束这段其有意义被reduces接收处理。
+因为只有同步的action才可以改变数据触发reducer有意义的更新state。
+然后我们需要从redux引入applyMiddleware和从redux-thunk中引入thunkMiddleware来处理异步thunk action。做完这些之后，我们的redux异步用法就差
+不多告一段落，接下来的所有操作都是与同步redux一毛一样的。
+
+所以从上边我们也可以看出来，同步redux和异步redux的区别仅仅是在于引入中间件来增强dispatch接收thunk函数的处理，剩下的操作都是同步的操作。
+以上就是同异步redux的使用。
+
+接下来我们将会从头学习react-router。在那之前我们还是先去将AsyncApp用middleware完善好。
